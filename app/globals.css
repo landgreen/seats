@@ -1,0 +1,180 @@
+@import "tailwindcss";
+
+:root {
+  --navy: #1f3553;
+  --blue: #3d6f9e;
+  --paper: #f4f1ea;
+  --card: #ffffff;
+  --ink: #1f2937;
+  --muted: #6b7280;
+  --line: #d7d9dc;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.page-shell {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 36px 0 48px;
+}
+
+.page-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  margin: 0 0 5px;
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  color: var(--navy);
+  font-size: clamp(30px, 4vw, 44px);
+  line-height: 1;
+}
+
+.room-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.classroom {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #e9e5dc;
+}
+
+.front-of-room {
+  display: flex;
+  justify-content: center;
+  padding: 20px 24px 14px;
+}
+
+.front-of-room span {
+  width: min(520px, 75%);
+  padding: 10px 20px;
+  border-radius: 3px;
+  background: var(--navy);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.chart-scroll {
+  overflow-x: auto;
+  padding: 10px 20px 20px;
+}
+
+.chart-inner {
+  min-width: 760px;
+}
+
+.column-labels,
+.seating-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  gap: 12px 20px;
+}
+
+.column-labels {
+  margin-bottom: 8px;
+}
+
+.column-labels span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.student-seat {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--card);
+}
+
+.seat-number {
+  min-width: 34px;
+  padding: 6px 5px;
+  border-radius: 4px;
+  background: #e7eef5;
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.student-name {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.back-of-room {
+  padding: 10px 20px 16px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .page-shell {
+    width: min(100% - 20px, 1120px);
+    padding-top: 24px;
+  }
+
+  .page-header {
+    align-items: start;
+  }
+
+  .chart-scroll {
+    padding-inline: 12px;
+  }
+}
