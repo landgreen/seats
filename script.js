@@ -7,6 +7,7 @@ const STORAGE_KEY = "attendance-periods";
 const CURRENT_PERIOD_STORAGE_KEY = "attendance-current-period";
 const PERIOD_ONE_PHOTOS_SEEDED_KEY = "attendance-period-one-photos-seeded";
 const SHOW_STUDENT_PICTURES_KEY = "attendance-show-student-pictures";
+const VOICE_ENABLED_KEY = "attendance-voice-enabled";
 
 // Zero-based grid positions after inserting a new third column. These are the
 // same unavailable seats from the original 4-by-9 arrangement.
@@ -41,6 +42,49 @@ const PERIOD_ONE_PHOTOS = [
     image: "output/student-photos/james-theiss.jpg",
   },
 ];
+
+function speakStudentName(say) {
+  if (!voiceEnabled) {
+    return;
+  }
+
+  speechHandler.speech(say);
+}
+
+const speechHandler = {
+  voices: [],
+  init: function () {
+    const load = () => { this.voices = window.speechSynthesis.getVoices(); };
+    window.speechSynthesis.onvoiceschanged = load;
+    load();
+  },
+  speech: function (say, type = 'uk') {
+    if (this.voices.length === 0) this.voices = window.speechSynthesis.getVoices();
+    const utterance = new SpeechSynthesisUtterance(say);
+    utterance.rate = 0.95;
+    utterance.volume = 0.5;
+    const library = {
+      'us': { lang: 'en-US', names: ['Jenny', 'Aria', 'Guy', 'Google US English', 'Samantha'] },
+      'uk': { lang: 'en-GB', names: ['Sonia', 'Libby', 'Ryan', 'Google UK English', 'Serena'] },
+      'au': { lang: 'en-AU', names: ['Natasha', 'William', 'Google Australian English', 'Karen'] },
+      'in': { lang: 'en-IN', names: ['Neerja', 'Prabhat', 'Google India English', 'Rishi', 'Veena'] },
+      'ca': { lang: 'en-CA', names: ['Clara', 'Liam', 'Google Canada English', 'Linda', 'Moira'] },
+    };
+    const config = library[type] || library['uk'];
+
+    // It looks for names in order of quality
+    let selectedVoice = null;
+    for (let name of config.names) {
+      selectedVoice = this.voices.find(v => v.name.includes(name));
+      if (selectedVoice) break;
+    }
+
+    // Fallback: If no premium name is found, take ANY voice matching the language code
+    utterance.voice = selectedVoice || this.voices.find(v => v.lang.startsWith(config.lang));
+    window.speechSynthesis.speak(utterance);
+  }
+};
+speechHandler.init();
 
 function createStudent(name, image = null) {
   return {
@@ -240,6 +284,23 @@ function saveShowStudentPictures() {
   }
 }
 
+function loadVoiceEnabled() {
+  try {
+    return localStorage.getItem(VOICE_ENABLED_KEY) !== "false";
+  } catch (error) {
+    console.warn("The voice setting could not be loaded.", error);
+    return true;
+  }
+}
+
+function saveVoiceEnabled() {
+  try {
+    localStorage.setItem(VOICE_ENABLED_KEY, voiceEnabled);
+  } catch (error) {
+    console.warn("The voice setting could not be saved.", error);
+  }
+}
+
 const periods = loadPeriods();
 
 function seedPeriodOnePhotos() {
@@ -281,15 +342,18 @@ const randomizedButton = document.querySelector("#randomized-student");
 const showStudentPicturesCheckbox = document.querySelector(
   "#show-student-pictures",
 );
+const voiceEnabledCheckbox = document.querySelector("#voice-enabled");
 
 let currentPeriodIndex = loadCurrentPeriod();
 let selectedStudentIndex = null;
 let randomizedStudentIndex = null;
 let showStudentPictures = loadShowStudentPictures();
+let voiceEnabled = loadVoiceEnabled();
 
 function renderPeriod() {
   periodLabel.textContent = `Period ${currentPeriodIndex + 1}`;
   showStudentPicturesCheckbox.checked = showStudentPictures;
+  voiceEnabledCheckbox.checked = voiceEnabled;
   studentGrid.classList.toggle("pictures-hidden", !showStudentPictures);
   studentGrid.replaceChildren();
 
@@ -304,12 +368,10 @@ function renderPeriod() {
     const student = document.createElement("div");
     student.className = "student";
     student.dataset.index = studentIndex;
-    student.style.gridRow = `${rowIndex + 1}${
-      mergedBlock ? ` / span ${mergedBlock.rowSpan}` : ""
-    }`;
-    student.style.gridColumn = `${columnIndex + 1}${
-      mergedBlock ? ` / span ${mergedBlock.columnSpan}` : ""
-    }`;
+    student.style.gridRow = `${rowIndex + 1}${mergedBlock ? ` / span ${mergedBlock.rowSpan}` : ""
+      }`;
+    student.style.gridColumn = `${columnIndex + 1}${mergedBlock ? ` / span ${mergedBlock.columnSpan}` : ""
+      }`;
 
     if (BLOCKED_POSITIONS.has(studentIndex)) {
       student.classList.add("blocked");
@@ -467,8 +529,11 @@ function chooseRandomStudent() {
 
   const studentRow = Math.floor(randomizedStudentIndex / COLUMNS);
   const studentColumn = randomizedStudentIndex % COLUMNS;
+  const selectedStudent =
+    periods[currentPeriodIndex][studentRow][studentColumn];
 
-  periods[currentPeriodIndex][studentRow][studentColumn].calledOn += 1;
+  selectedStudent.calledOn += 1;
+  speakStudentName(selectedStudent.name);
   savePeriods();
   selectedStudentIndex = null;
   renderPeriod();
@@ -491,6 +556,14 @@ showStudentPicturesCheckbox.addEventListener("change", () => {
   selectedStudentIndex = null;
   saveShowStudentPictures();
   renderPeriod();
+});
+voiceEnabledCheckbox.addEventListener("change", () => {
+  voiceEnabled = voiceEnabledCheckbox.checked;
+  saveVoiceEnabled();
+
+  if (!voiceEnabled && "speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
 });
 
 renderPeriod();
