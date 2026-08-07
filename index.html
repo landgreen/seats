@@ -26,12 +26,28 @@
       <summary>Settings</summary>
       <label class="settings-option">
         <input id="show-student-pictures" type="checkbox" checked />
-        <span>Student Pictures</span>
+        <span>photos</span>
       </label>
       <label class="settings-option">
         <input id="voice-enabled" type="checkbox" checked />
-        <span>Voice</span>
+        <span>voice</span>
       </label>
+      <label class="settings-option">
+        <input id="show-called-on-count" type="checkbox" />
+        <span>called on</span>
+      </label>
+      <button id="export-local-storage" class="settings-export-button" type="button">
+        export JSON
+      </button>
+      <button id="import-local-storage" class="settings-export-button" type="button">
+        import JSON
+      </button>
+      <input
+        id="import-local-storage-file"
+        type="file"
+        accept=".json,application/json"
+        hidden
+      />
     </details>
   </nav>
 

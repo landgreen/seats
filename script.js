@@ -8,6 +8,7 @@ const CURRENT_PERIOD_STORAGE_KEY = "attendance-current-period";
 const PERIOD_ONE_PHOTOS_SEEDED_KEY = "attendance-period-one-photos-seeded";
 const SHOW_STUDENT_PICTURES_KEY = "attendance-show-student-pictures";
 const VOICE_ENABLED_KEY = "attendance-voice-enabled";
+const SHOW_CALLED_ON_COUNT_KEY = "attendance-show-called-on-count";
 
 // Zero-based grid positions after inserting a new third column. These are the
 // same unavailable seats from the original 4-by-9 arrangement.
@@ -43,14 +44,6 @@ const PERIOD_ONE_PHOTOS = [
   },
 ];
 
-function speakStudentName(say) {
-  if (!voiceEnabled) {
-    return;
-  }
-
-  speechHandler.speech(say);
-}
-
 const speechHandler = {
   voices: [],
   init: function () {
@@ -59,6 +52,9 @@ const speechHandler = {
     load();
   },
   speech: function (say, type = 'uk') {
+    if (!voiceEnabled) {
+      return;
+    }
     if (this.voices.length === 0) this.voices = window.speechSynthesis.getVoices();
     const utterance = new SpeechSynthesisUtterance(say);
     utterance.rate = 0.95;
@@ -90,6 +86,7 @@ function createStudent(name, image = null) {
   return {
     name,
     image,
+    isEmpty: false,
     calledOn: 0,
     tardy: 0,
     eating: 0,
@@ -167,6 +164,8 @@ function normalizeStudentRecords(storedPeriods) {
       row.map((student) => ({
         ...student,
         image: typeof student.image === "string" ? student.image : null,
+        isEmpty:
+          typeof student.isEmpty === "boolean" ? student.isEmpty : false,
       })),
     ),
   );
@@ -301,6 +300,151 @@ function saveVoiceEnabled() {
   }
 }
 
+function loadShowCalledOnCount() {
+  try {
+    return localStorage.getItem(SHOW_CALLED_ON_COUNT_KEY) === "true";
+  } catch (error) {
+    console.warn("The called-on count setting could not be loaded.", error);
+    return false;
+  }
+}
+
+function saveShowCalledOnCount() {
+  try {
+    localStorage.setItem(SHOW_CALLED_ON_COUNT_KEY, showCalledOnCount);
+  } catch (error) {
+    console.warn("The called-on count setting could not be saved.", error);
+  }
+}
+
+function parseStoredValue(value) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+function exportLocalStorage() {
+  savePeriods();
+  saveCurrentPeriod();
+  saveShowStudentPictures();
+  saveVoiceEnabled();
+  saveShowCalledOnCount();
+
+  const savedData = {};
+
+  for (
+    let storageIndex = 0;
+    storageIndex < localStorage.length;
+    storageIndex += 1
+  ) {
+    const key = localStorage.key(storageIndex);
+
+    if (key?.startsWith("attendance-")) {
+      savedData[key] = parseStoredValue(localStorage.getItem(key));
+    }
+  }
+
+  const exportData = {
+    application: "attendance-seating-chart",
+    formatVersion: 1,
+    exportedAt: new Date().toISOString(),
+    data: savedData,
+  };
+  const file = new Blob([JSON.stringify(exportData, null, 2)], {
+    type: "application/json",
+  });
+  const downloadUrl = URL.createObjectURL(file);
+  const downloadLink = document.createElement("a");
+  const timestamp = exportData.exportedAt.replace(/[:.]/g, "-");
+
+  downloadLink.href = downloadUrl;
+  downloadLink.download = `attendance-backup-${timestamp}.json`;
+  document.body.append(downloadLink);
+  downloadLink.click();
+  downloadLink.remove();
+  window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
+}
+
+function getAttendanceStorageEntries() {
+  const entries = [];
+
+  for (
+    let storageIndex = 0;
+    storageIndex < localStorage.length;
+    storageIndex += 1
+  ) {
+    const key = localStorage.key(storageIndex);
+
+    if (key?.startsWith("attendance-")) {
+      entries.push([key, localStorage.getItem(key)]);
+    }
+  }
+
+  return entries;
+}
+
+function writeImportedValue(key, value) {
+  const storedValue =
+    typeof value === "string" ? value : JSON.stringify(value);
+  localStorage.setItem(key, storedValue);
+}
+
+async function importLocalStorage(file) {
+  const importedData = JSON.parse(await file.text());
+
+  if (
+    importedData?.application !== "attendance-seating-chart" ||
+    importedData?.formatVersion !== 1 ||
+    importedData.data === null ||
+    typeof importedData.data !== "object" ||
+    Array.isArray(importedData.data)
+  ) {
+    throw new Error("This is not a compatible attendance backup file.");
+  }
+
+  let importedEntries = Object.entries(importedData.data);
+
+  if (
+    importedEntries.length === 0 ||
+    importedEntries.some(([key]) => !key.startsWith("attendance-")) ||
+    !hasValidPeriodStructure(importedData.data[STORAGE_KEY])
+  ) {
+    throw new Error("The attendance backup data is missing or invalid.");
+  }
+
+  importedData.data[STORAGE_KEY] = normalizeStudentRecords(
+    importedData.data[STORAGE_KEY],
+  );
+  importedEntries = Object.entries(importedData.data);
+
+  const confirmed = window.confirm(
+    "Import this backup? It will replace the attendance data currently saved in this browser.",
+  );
+
+  if (!confirmed) {
+    return false;
+  }
+
+  const previousEntries = getAttendanceStorageEntries();
+
+  try {
+    previousEntries.forEach(([key]) => localStorage.removeItem(key));
+    importedEntries.forEach(([key, value]) => writeImportedValue(key, value));
+  } catch (error) {
+    getAttendanceStorageEntries().forEach(([key]) =>
+      localStorage.removeItem(key),
+    );
+    previousEntries.forEach(([key, value]) =>
+      localStorage.setItem(key, value),
+    );
+    throw error;
+  }
+
+  return true;
+}
+
 const periods = loadPeriods();
 
 function seedPeriodOnePhotos() {
@@ -343,17 +487,37 @@ const showStudentPicturesCheckbox = document.querySelector(
   "#show-student-pictures",
 );
 const voiceEnabledCheckbox = document.querySelector("#voice-enabled");
+const showCalledOnCountCheckbox = document.querySelector(
+  "#show-called-on-count",
+);
+const exportLocalStorageButton = document.querySelector(
+  "#export-local-storage",
+);
+const importLocalStorageButton = document.querySelector(
+  "#import-local-storage",
+);
+const importLocalStorageFile = document.querySelector(
+  "#import-local-storage-file",
+);
 
 let currentPeriodIndex = loadCurrentPeriod();
 let selectedStudentIndex = null;
 let randomizedStudentIndex = null;
 let showStudentPictures = loadShowStudentPictures();
 let voiceEnabled = loadVoiceEnabled();
+let showCalledOnCount = loadShowCalledOnCount();
+
+function getStudentDisplayName(studentData) {
+  return showCalledOnCount
+    ? `${studentData.calledOn} - ${studentData.name}`
+    : studentData.name;
+}
 
 function renderPeriod() {
   periodLabel.textContent = `Period ${currentPeriodIndex + 1}`;
   showStudentPicturesCheckbox.checked = showStudentPictures;
   voiceEnabledCheckbox.checked = voiceEnabled;
+  showCalledOnCountCheckbox.checked = showCalledOnCount;
   studentGrid.classList.toggle("pictures-hidden", !showStudentPictures);
   studentGrid.replaceChildren();
 
@@ -377,19 +541,73 @@ function renderPeriod() {
       student.classList.add("blocked");
       student.setAttribute("aria-disabled", "true");
     } else {
-      const studentName = document.createElement("div");
-      studentName.className = "student-name";
-      studentName.textContent = studentData.name;
+      if (studentData.isEmpty) {
+        student.classList.add("empty-seat");
+      } else {
+        const studentName = document.createElement("div");
+        studentName.className = "student-name";
+        studentName.textContent = getStudentDisplayName(studentData);
+        student.append(studentName);
+      }
 
       const studentOptions = document.createElement("details");
       studentOptions.className = "student-options";
       const optionsLabel = document.createElement("summary");
-      optionsLabel.textContent = "Options";
+      optionsLabel.textContent = "options";
       studentOptions.append(optionsLabel);
 
-      student.append(studentName);
+      const optionFields = document.createElement("div");
+      optionFields.className = "student-option-fields";
 
-      if (showStudentPictures) {
+      if (!studentData.isEmpty) {
+        [
+          ["Called On", "calledOn"],
+          ["Tardy", "tardy"],
+          ["Eating", "eating"],
+        ].forEach(([labelText, propertyName]) => {
+          const fieldLabel = document.createElement("label");
+          fieldLabel.className = "student-option-field";
+
+          const fieldName = document.createElement("span");
+          fieldName.textContent = labelText;
+
+          const fieldInput = document.createElement("input");
+          fieldInput.type = "number";
+          fieldInput.step = "1";
+          fieldInput.min = "0";
+          fieldInput.value = studentData[propertyName];
+          fieldInput.dataset.studentProperty = propertyName;
+          fieldInput.setAttribute(
+            "aria-label",
+            `${studentData.name} ${labelText}`,
+          );
+
+          fieldLabel.append(fieldName, fieldInput);
+          optionFields.append(fieldLabel);
+        });
+      }
+
+      const emptyFieldLabel = document.createElement("label");
+      emptyFieldLabel.className = "student-option-field";
+
+      const emptyFieldName = document.createElement("span");
+      emptyFieldName.textContent = "Empty";
+
+      const emptyFieldInput = document.createElement("input");
+      emptyFieldInput.type = "checkbox";
+      emptyFieldInput.checked = studentData.isEmpty;
+      emptyFieldInput.dataset.studentProperty = "isEmpty";
+      emptyFieldInput.setAttribute(
+        "aria-label",
+        `${studentData.name} seat is empty`,
+      );
+
+      emptyFieldLabel.append(emptyFieldName, emptyFieldInput);
+      optionFields.append(emptyFieldLabel);
+
+      studentOptions.append(optionFields);
+
+      if (showStudentPictures && !studentData.isEmpty) {
         const photoFrame = document.createElement("div");
         photoFrame.className = "student-photo-frame";
 
@@ -472,6 +690,37 @@ studentGrid.addEventListener("click", (event) => {
   renderPeriod();
 });
 
+studentGrid.addEventListener("change", (event) => {
+  const input = event.target.closest("input[data-student-property]");
+
+  if (!input) {
+    return;
+  }
+
+  const studentCard = input.closest(".student");
+  const studentIndex = Number(studentCard.dataset.index);
+  const propertyName = input.dataset.studentProperty;
+  const studentData = getStudentAtPosition(studentIndex);
+
+  if (input.type === "checkbox") {
+    studentData[propertyName] = input.checked;
+    savePeriods();
+    renderPeriod();
+    return;
+  }
+
+  const enteredValue = Number.parseInt(input.value, 10);
+  const normalizedValue = Number.isFinite(enteredValue)
+    ? Math.max(0, enteredValue)
+    : 0;
+
+  studentData[propertyName] = normalizedValue;
+  input.value = normalizedValue;
+  studentCard.querySelector(".student-name").textContent =
+    getStudentDisplayName(studentData);
+  savePeriods();
+});
+
 function getAvailableStudentPositions() {
   return Array.from(
     { length: ROWS * COLUMNS },
@@ -533,7 +782,7 @@ function chooseRandomStudent() {
     periods[currentPeriodIndex][studentRow][studentColumn];
 
   selectedStudent.calledOn += 1;
-  speakStudentName(selectedStudent.name);
+  speechHandler.speech(selectedStudent.name);
   savePeriods();
   selectedStudentIndex = null;
   renderPeriod();
@@ -563,6 +812,36 @@ voiceEnabledCheckbox.addEventListener("change", () => {
 
   if (!voiceEnabled && "speechSynthesis" in window) {
     window.speechSynthesis.cancel();
+  }
+});
+showCalledOnCountCheckbox.addEventListener("change", () => {
+  showCalledOnCount = showCalledOnCountCheckbox.checked;
+  selectedStudentIndex = null;
+  saveShowCalledOnCount();
+  renderPeriod();
+});
+exportLocalStorageButton.addEventListener("click", exportLocalStorage);
+importLocalStorageButton.addEventListener("click", () => {
+  importLocalStorageFile.click();
+});
+importLocalStorageFile.addEventListener("change", async () => {
+  const [file] = importLocalStorageFile.files;
+
+  if (!file) {
+    return;
+  }
+
+  try {
+    const imported = await importLocalStorage(file);
+
+    if (imported) {
+      window.location.reload();
+    }
+  } catch (error) {
+    console.error("Attendance import failed.", error);
+    window.alert(`Import failed: ${error.message}`);
+  } finally {
+    importLocalStorageFile.value = "";
   }
 });
 

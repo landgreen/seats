@@ -7,34 +7,38 @@ body {
   margin: 0;
   min-height: 100vh;
   font-family: Arial, sans-serif;
-  background: #f4f6f8;
+  background: #d0e0e3;
+  color: #0c343d;
+  /* font-weight: 800; */
 }
 
 .period-menu {
-  position: absolute;
-  top: 24px;
-  left: 24px;
+  position: fixed;
+  top: 0;
+  left: 15px;
   z-index: 1;
+  width: 186px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 10px;
-  border: 1px solid #9aa4b2;
-  border-radius: 8px;
+  gap: 8px;
+  padding: 8px;
+  border: 0px solid #9aa4b2;
+  border-top: 0;
+  border-radius: 0 0 8px 8px;
   background: #ffffff;
-  box-shadow: 0 4px 12px rgb(31 41 55 / 10%);
+  box-shadow: 0 8px 24px rgb(12 52 61 / 24%);
 }
 
 .period-controls {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 5px;
 }
 
 .period-label {
   min-width: 72px;
-  color: #1f2937;
+  color: #0c343d;
   font-weight: 600;
   text-align: center;
 }
@@ -45,7 +49,7 @@ body {
   border: 1px solid #9aa4b2;
   border-radius: 6px;
   background: #f4f6f8;
-  color: #1f2937;
+  color: #0c343d;
   font-size: 18px;
   cursor: pointer;
 }
@@ -55,7 +59,7 @@ body {
 }
 
 .period-button:focus-visible {
-  outline: 3px solid #93c5fd;
+  outline: 3px solid #93e4fd;
   outline-offset: 2px;
 }
 
@@ -64,8 +68,8 @@ body {
   padding: 9px 12px;
   border: 1px solid #9aa4b2;
   border-radius: 6px;
-  background: #f4f6f8;
-  color: #1f2937;
+  background: #f4f7f8;
+  color: #0c343d;
   font-weight: 600;
   cursor: pointer;
 }
@@ -81,9 +85,9 @@ body {
 
 .settings-menu {
   width: 100%;
-  border-top: 1px solid #d1d5db;
+  border-top: 1px solid #d1d9db;
   padding-top: 8px;
-  color: #334155;
+  color: #0c343d;
   font-size: 13px;
 }
 
@@ -105,6 +109,28 @@ body {
   margin: 0;
 }
 
+.settings-export-button {
+  width: 100%;
+  margin-top: 10px;
+  padding: 7px 9px;
+  border: 1px solid #9aa4b2;
+  border-radius: 5px;
+  background: #f4f6f8;
+  color: #0c343d;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.settings-export-button:hover {
+  background: #e5e9ee;
+}
+
+.settings-export-button:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 2px;
+}
+
 .page {
   min-height: 100vh;
   display: flex;
@@ -117,14 +143,14 @@ body {
 .student-grid {
   display: grid;
   grid-template-columns: repeat(10, minmax(100px, 1fr));
-  grid-template-rows: repeat(4, 230px);
-  gap: 10px;
+  grid-template-rows: repeat(4, minmax(230px, auto));
+  gap: 0;
   width: min(1320px, 100%);
   min-width: 1090px;
 }
 
 .student-grid.pictures-hidden {
-  grid-template-rows: repeat(4, 105px);
+  grid-template-rows: repeat(4, minmax(105px, auto));
 }
 
 .student {
@@ -132,13 +158,13 @@ body {
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  gap: 6px;
-  padding: 8px;
-  border: 1px solid #9aa4b2;
-  border-radius: 6px;
+  gap: 0px;
+  padding: 5px;
+  border: 1px solid #beced3;
+  border-radius: 0;
   background: #ffffff;
-  color: #1f2937;
-  font-weight: 600;
+  color: #0c343d;
+  /* font-weight: 100; */
   cursor: pointer;
   transition:
     background-color 150ms ease,
@@ -149,13 +175,13 @@ body {
 .student-name {
   width: 100%;
   min-width: 0;
-  min-height: 28px;
+  /* min-height: 22px; */
   display: flex;
   align-items: center;
   justify-content: flex-start;
   color: inherit;
-  font-size: 14px;
-  line-height: 1.2;
+  font-size: 15px;
+  /* line-height: 1.2; */
   text-align: left;
   white-space: nowrap;
   overflow: hidden;
@@ -166,9 +192,9 @@ body {
   width: 100%;
   aspect-ratio: 3 / 4;
   overflow: hidden;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  background: #eef1f4;
+  /* border: 1px solid #cbd5e1; */
+  /* border-radius: 10px; */
+  /* background: #cfd9dd; */
 }
 
 .student-photo {
@@ -182,14 +208,41 @@ body {
   width: 100%;
   margin-top: auto;
   border-top: 1px solid #d1d5db;
-  padding-top: 7px;
-  color: #475569;
+  padding-top: 4px;
+  color: #0c343d;
   font-size: 12px;
 }
 
 .student-options summary {
   cursor: pointer;
   user-select: none;
+}
+
+.student-option-fields {
+  display: grid;
+  gap: 6px;
+  padding-top: 8px;
+}
+
+.student-option-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-weight: 400;
+}
+
+.student-option-field input[type="number"] {
+  width: 48px;
+  min-width: 0;
+  padding: 3px 4px;
+  border: 1px solid #9aa4b2;
+  border-radius: 4px;
+  font: inherit;
+}
+
+.student-option-field input[type="checkbox"] {
+  margin-left: auto;
 }
 
 .student:hover {
@@ -209,11 +262,15 @@ body {
   box-shadow: 0 0 0 3px rgb(22 163 74 / 20%);
 }
 
+.student.empty-seat {
+  opacity: 0.2;
+}
+
 .student.blocked,
 .student.blocked:hover {
   border-color: #9ca3af;
   background: #d1d5db;
-  color: #6b7280;
+  color: #0c343d;
   cursor: not-allowed;
   box-shadow: none;
 }
