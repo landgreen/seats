@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Student Grid</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <nav class="period-menu" aria-label="Class controls">
+    <div class="period-controls">
+      <button id="previous-period" class="period-button" type="button" aria-label="Previous period">
+        &larr;
+      </button>
+      <span id="period-label" class="period-label" aria-live="polite">Period 1</span>
+      <button id="next-period" class="period-button" type="button" aria-label="Next period">
+        &rarr;
+      </button>
+    </div>
+    <button id="randomized-student" class="randomized-button" type="button">
+      random
+    </button>
+    <details class="settings-menu">
+      <summary>Settings</summary>
+      <label class="settings-option">
+        <input id="show-student-pictures" type="checkbox" checked />
+        <span>Student Pictures</span>
+      </label>
+    </details>
+  </nav>
+
+  <main class="page">
+    <div id="student-grid" class="student-grid"></div>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
