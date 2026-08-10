@@ -9,18 +9,17 @@ const PERIOD_ONE_PHOTOS_SEEDED_KEY = "attendance-period-one-photos-seeded";
 const SHOW_STUDENT_PICTURES_KEY = "attendance-show-student-pictures";
 const VOICE_ENABLED_KEY = "attendance-voice-enabled";
 const SHOW_CALLED_ON_COUNT_KEY = "attendance-show-called-on-count";
+const CALL_HISTORY_KEY = "attendance-call-history";
+const FORMER_NON_SEATS_EMPTIED_KEY = "attendance-former-non-seats-emptied";
+const FORMER_NON_SEATS_LOCKED_KEY = "attendance-former-non-seats-locked";
 
-// Zero-based grid positions after inserting a new third column. These are the
-// same unavailable seats from the original 4-by-9 arrangement.
-const BLOCKED_POSITIONS = new Set([0, 1, 8, 9, 20, 21, 30, 31]);
+// These positions used to be gray, merged non-seat areas. They are now regular
+// cards whose initial state is empty.
+const FORMER_NON_SEAT_POSITIONS = new Set([0, 1, 8, 9, 20, 21, 30, 31]);
+const BLOCKED_POSITIONS = new Set();
 
-// Each entry begins at its top-left grid position and spans the specified area.
-const MERGED_BLOCKS = new Map([
-  [0, { rowSpan: 1, columnSpan: 2 }],
-  [8, { rowSpan: 1, columnSpan: 2 }],
-  [20, { rowSpan: 2, columnSpan: 2 }],
-]);
-const MERGED_BLOCK_CHILDREN = new Set([1, 9, 21, 30, 31]);
+const MERGED_BLOCKS = new Map();
+const MERGED_BLOCK_CHILDREN = new Set();
 const PERIOD_ONE_PHOTOS = [
   {
     name: "Camilo Garcia",
@@ -87,6 +86,7 @@ function createStudent(name, image = null) {
     name,
     image,
     isEmpty: false,
+    isLocked: false,
     calledOn: 0,
     tardy: 0,
     eating: 0,
@@ -166,6 +166,8 @@ function normalizeStudentRecords(storedPeriods) {
         image: typeof student.image === "string" ? student.image : null,
         isEmpty:
           typeof student.isEmpty === "boolean" ? student.isEmpty : false,
+        isLocked:
+          typeof student.isLocked === "boolean" ? student.isLocked : false,
       })),
     ),
   );
@@ -317,6 +319,47 @@ function saveShowCalledOnCount() {
   }
 }
 
+function createEmptyCallHistory() {
+  return Array.from({ length: PERIOD_COUNT }, () => []);
+}
+
+function loadCallHistory() {
+  try {
+    const storedHistory = JSON.parse(localStorage.getItem(CALL_HISTORY_KEY));
+    const isValidHistory =
+      Array.isArray(storedHistory) &&
+      storedHistory.length === PERIOD_COUNT &&
+      storedHistory.every(
+        (periodHistory) =>
+          Array.isArray(periodHistory) &&
+          periodHistory.every(
+            (entry) =>
+              entry !== null &&
+              typeof entry === "object" &&
+              typeof entry.studentName === "string" &&
+              typeof entry.calledAt === "string" &&
+              Number.isFinite(entry.calledOnCount),
+          ),
+      );
+
+    if (isValidHistory) {
+      return storedHistory;
+    }
+  } catch (error) {
+    console.warn("The call history could not be loaded.", error);
+  }
+
+  return createEmptyCallHistory();
+}
+
+function saveCallHistory() {
+  try {
+    localStorage.setItem(CALL_HISTORY_KEY, JSON.stringify(callHistory));
+  } catch (error) {
+    console.warn("The call history could not be saved.", error);
+  }
+}
+
 function parseStoredValue(value) {
   try {
     return JSON.parse(value);
@@ -327,6 +370,7 @@ function parseStoredValue(value) {
 
 function exportLocalStorage() {
   savePeriods();
+  saveCallHistory();
   saveCurrentPeriod();
   saveShowStudentPictures();
   saveVoiceEnabled();
@@ -361,6 +405,57 @@ function exportLocalStorage() {
 
   downloadLink.href = downloadUrl;
   downloadLink.download = `attendance-backup-${timestamp}.json`;
+  document.body.append(downloadLink);
+  downloadLink.click();
+  downloadLink.remove();
+  window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
+}
+
+function downloadStudentReport() {
+  const reportLines = [
+    "Student Report",
+    `Generated: ${new Date().toLocaleString()}`,
+    "",
+  ];
+
+  periods.forEach((period, periodIndex) => {
+    const students = period
+      .flat()
+      .filter((student) => !student.isEmpty && !student.isLocked)
+      .sort((firstStudent, secondStudent) =>
+        firstStudent.name.localeCompare(secondStudent.name, undefined, {
+          sensitivity: "base",
+          numeric: true,
+        }),
+      );
+
+    reportLines.push(`Period ${periodIndex + 1}`, "--------");
+
+    if (students.length === 0) {
+      reportLines.push("(No students)", "");
+      return;
+    }
+
+    students.forEach((student) => {
+      reportLines.push(
+        student.name,
+        `  Called on: ${student.calledOn}`,
+        `  Tardies: ${student.tardy}`,
+        `  Eating: ${student.eating}`,
+        "",
+      );
+    });
+  });
+
+  const file = new Blob([reportLines.join("\n")], {
+    type: "text/plain;charset=utf-8",
+  });
+  const downloadUrl = URL.createObjectURL(file);
+  const downloadLink = document.createElement("a");
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+
+  downloadLink.href = downloadUrl;
+  downloadLink.download = `student-report-${timestamp}.txt`;
   document.body.append(downloadLink);
   downloadLink.click();
   downloadLink.remove();
@@ -446,6 +541,54 @@ async function importLocalStorage(file) {
 }
 
 const periods = loadPeriods();
+const callHistory = loadCallHistory();
+
+function emptyFormerNonSeatsOnce() {
+  try {
+    if (localStorage.getItem(FORMER_NON_SEATS_EMPTIED_KEY) === "true") {
+      return;
+    }
+
+    periods.forEach((period) => {
+      FORMER_NON_SEAT_POSITIONS.forEach((studentIndex) => {
+        const row = Math.floor(studentIndex / COLUMNS);
+        const column = studentIndex % COLUMNS;
+        period[row][column].isEmpty = true;
+      });
+    });
+
+    savePeriods();
+    localStorage.setItem(FORMER_NON_SEATS_EMPTIED_KEY, "true");
+  } catch (error) {
+    console.warn("The former non-seat positions could not be emptied.", error);
+  }
+}
+
+emptyFormerNonSeatsOnce();
+
+function lockFormerNonSeatsOnce() {
+  try {
+    if (localStorage.getItem(FORMER_NON_SEATS_LOCKED_KEY) === "true") {
+      return;
+    }
+
+    periods.forEach((period) => {
+      FORMER_NON_SEAT_POSITIONS.forEach((studentIndex) => {
+        const row = Math.floor(studentIndex / COLUMNS);
+        const column = studentIndex % COLUMNS;
+        period[row][column].isEmpty = false;
+        period[row][column].isLocked = true;
+      });
+    });
+
+    savePeriods();
+    localStorage.setItem(FORMER_NON_SEATS_LOCKED_KEY, "true");
+  } catch (error) {
+    console.warn("The former non-seat positions could not be locked.", error);
+  }
+}
+
+lockFormerNonSeatsOnce();
 
 function seedPeriodOnePhotos() {
   try {
@@ -456,7 +599,14 @@ function seedPeriodOnePhotos() {
     const availablePositions = Array.from(
       { length: ROWS * COLUMNS },
       (_, studentIndex) => studentIndex,
-    ).filter((studentIndex) => !BLOCKED_POSITIONS.has(studentIndex));
+    ).filter((studentIndex) => {
+      const row = Math.floor(studentIndex / COLUMNS);
+      const column = studentIndex % COLUMNS;
+      return (
+        !periods[0][row][column].isEmpty &&
+        !periods[0][row][column].isLocked
+      );
+    });
 
     PERIOD_ONE_PHOTOS.forEach((studentData, photoIndex) => {
       const studentIndex = availablePositions[photoIndex];
@@ -483,6 +633,9 @@ const periodLabel = document.querySelector("#period-label");
 const previousButton = document.querySelector("#previous-period");
 const nextButton = document.querySelector("#next-period");
 const randomizedButton = document.querySelector("#randomized-student");
+const undoStudentChangeButton = document.querySelector(
+  "#undo-student-change",
+);
 const showStudentPicturesCheckbox = document.querySelector(
   "#show-student-pictures",
 );
@@ -499,6 +652,9 @@ const importLocalStorageButton = document.querySelector(
 const importLocalStorageFile = document.querySelector(
   "#import-local-storage-file",
 );
+const downloadStudentReportButton = document.querySelector(
+  "#download-student-report",
+);
 
 let currentPeriodIndex = loadCurrentPeriod();
 let selectedStudentIndex = null;
@@ -506,6 +662,41 @@ let randomizedStudentIndex = null;
 let showStudentPictures = loadShowStudentPictures();
 let voiceEnabled = loadVoiceEnabled();
 let showCalledOnCount = loadShowCalledOnCount();
+let previousPeriodsState = null;
+let previousCallHistoryState = null;
+
+function clonePeriodsState(periodState) {
+  return JSON.parse(JSON.stringify(periodState));
+}
+
+function updateUndoButton() {
+  undoStudentChangeButton.disabled = previousPeriodsState === null;
+}
+
+function captureUndoState() {
+  previousPeriodsState = clonePeriodsState(periods);
+  previousCallHistoryState = clonePeriodsState(callHistory);
+  updateUndoButton();
+}
+
+function undoLastStudentChange() {
+  if (previousPeriodsState === null) {
+    return;
+  }
+
+  const restoredPeriods = clonePeriodsState(previousPeriodsState);
+  const restoredCallHistory = clonePeriodsState(previousCallHistoryState);
+  periods.splice(0, periods.length, ...restoredPeriods);
+  callHistory.splice(0, callHistory.length, ...restoredCallHistory);
+  previousPeriodsState = null;
+  previousCallHistoryState = null;
+  selectedStudentIndex = null;
+  randomizedStudentIndex = null;
+  savePeriods();
+  saveCallHistory();
+  updateUndoButton();
+  renderPeriod();
+}
 
 function getStudentDisplayName(studentData) {
   return showCalledOnCount
@@ -519,6 +710,7 @@ function renderPeriod() {
   voiceEnabledCheckbox.checked = voiceEnabled;
   showCalledOnCountCheckbox.checked = showCalledOnCount;
   studentGrid.classList.toggle("pictures-hidden", !showStudentPictures);
+  randomizedButton.disabled = getAvailableStudentPositions().length === 0;
   studentGrid.replaceChildren();
 
   periods[currentPeriodIndex].flat().forEach((studentData, studentIndex) => {
@@ -541,7 +733,9 @@ function renderPeriod() {
       student.classList.add("blocked");
       student.setAttribute("aria-disabled", "true");
     } else {
-      if (studentData.isEmpty) {
+      if (studentData.isLocked) {
+        student.classList.add("locked-seat");
+      } else if (studentData.isEmpty) {
         student.classList.add("empty-seat");
       } else {
         const studentName = document.createElement("div");
@@ -559,7 +753,22 @@ function renderPeriod() {
       const optionFields = document.createElement("div");
       optionFields.className = "student-option-fields";
 
-      if (!studentData.isEmpty) {
+      if (!studentData.isEmpty && !studentData.isLocked) {
+        const nameFieldLabel = document.createElement("label");
+        nameFieldLabel.className = "student-option-field";
+
+        const nameFieldName = document.createElement("span");
+        nameFieldName.textContent = "Name";
+
+        const nameFieldInput = document.createElement("input");
+        nameFieldInput.type = "text";
+        nameFieldInput.value = studentData.name;
+        nameFieldInput.dataset.studentProperty = "name";
+        nameFieldInput.setAttribute("aria-label", `${studentData.name} name`);
+
+        nameFieldLabel.append(nameFieldName, nameFieldInput);
+        optionFields.append(nameFieldLabel);
+
         [
           ["Called On", "calledOn"],
           ["Tardy", "tardy"],
@@ -605,9 +814,31 @@ function renderPeriod() {
       emptyFieldLabel.append(emptyFieldName, emptyFieldInput);
       optionFields.append(emptyFieldLabel);
 
+      const lockedFieldLabel = document.createElement("label");
+      lockedFieldLabel.className = "student-option-field";
+
+      const lockedFieldName = document.createElement("span");
+      lockedFieldName.textContent = "Locked";
+
+      const lockedFieldInput = document.createElement("input");
+      lockedFieldInput.type = "checkbox";
+      lockedFieldInput.checked = studentData.isLocked;
+      lockedFieldInput.dataset.studentProperty = "isLocked";
+      lockedFieldInput.setAttribute(
+        "aria-label",
+        `${studentData.name} chair is locked`,
+      );
+
+      lockedFieldLabel.append(lockedFieldName, lockedFieldInput);
+      optionFields.append(lockedFieldLabel);
+
       studentOptions.append(optionFields);
 
-      if (showStudentPictures && !studentData.isEmpty) {
+      if (
+        showStudentPictures &&
+        !studentData.isEmpty &&
+        !studentData.isLocked
+      ) {
         const photoFrame = document.createElement("div");
         photoFrame.className = "student-photo-frame";
 
@@ -637,13 +868,20 @@ function renderPeriod() {
 }
 
 function swapStudents(firstIndex, secondIndex) {
+  const firstStudent = getStudentAtPosition(firstIndex);
+  const secondStudent = getStudentAtPosition(secondIndex);
+
   if (
     BLOCKED_POSITIONS.has(firstIndex) ||
-    BLOCKED_POSITIONS.has(secondIndex)
+    BLOCKED_POSITIONS.has(secondIndex) ||
+    firstStudent.isLocked ||
+    secondStudent.isLocked ||
+    firstIndex === secondIndex
   ) {
     return;
   }
 
+  captureUndoState();
   const period = periods[currentPeriodIndex];
   const firstRow = Math.floor(firstIndex / COLUMNS);
   const firstColumn = firstIndex % COLUMNS;
@@ -665,7 +903,11 @@ studentGrid.addEventListener("click", (event) => {
 
   const student = event.target.closest(".student");
 
-  if (!student || student.classList.contains("blocked")) {
+  if (
+    !student ||
+    student.classList.contains("blocked") ||
+    student.classList.contains("locked-seat")
+  ) {
     return;
   }
 
@@ -691,7 +933,7 @@ studentGrid.addEventListener("click", (event) => {
 });
 
 studentGrid.addEventListener("change", (event) => {
-  const input = event.target.closest("input[data-student-property]");
+  const input = event.target.closest("[data-student-property]");
 
   if (!input) {
     return;
@@ -702,8 +944,39 @@ studentGrid.addEventListener("change", (event) => {
   const propertyName = input.dataset.studentProperty;
   const studentData = getStudentAtPosition(studentIndex);
 
+  if (propertyName === "name") {
+    const enteredValue = input.value.trim();
+
+    if (enteredValue.length === 0) {
+      input.value = studentData.name;
+      return;
+    }
+
+    if (studentData[propertyName] === enteredValue) {
+      return;
+    }
+
+    captureUndoState();
+    studentData[propertyName] = enteredValue;
+    savePeriods();
+    renderPeriod();
+    return;
+  }
+
   if (input.type === "checkbox") {
+    if (studentData[propertyName] === input.checked) {
+      return;
+    }
+
+    captureUndoState();
     studentData[propertyName] = input.checked;
+
+    if (input.checked && propertyName === "isEmpty") {
+      studentData.isLocked = false;
+    } else if (input.checked && propertyName === "isLocked") {
+      studentData.isEmpty = false;
+    }
+
     savePeriods();
     renderPeriod();
     return;
@@ -714,6 +987,12 @@ studentGrid.addEventListener("change", (event) => {
     ? Math.max(0, enteredValue)
     : 0;
 
+  if (studentData[propertyName] === normalizedValue) {
+    input.value = normalizedValue;
+    return;
+  }
+
+  captureUndoState();
   studentData[propertyName] = normalizedValue;
   input.value = normalizedValue;
   studentCard.querySelector(".student-name").textContent =
@@ -725,7 +1004,12 @@ function getAvailableStudentPositions() {
   return Array.from(
     { length: ROWS * COLUMNS },
     (_, studentIndex) => studentIndex,
-  ).filter((studentIndex) => !BLOCKED_POSITIONS.has(studentIndex));
+  ).filter(
+    (studentIndex) =>
+      !BLOCKED_POSITIONS.has(studentIndex) &&
+      !getStudentAtPosition(studentIndex).isEmpty &&
+      !getStudentAtPosition(studentIndex).isLocked,
+  );
 }
 
 function getStudentAtPosition(studentIndex) {
@@ -736,6 +1020,11 @@ function getStudentAtPosition(studentIndex) {
 
 function chooseWeightedStudentPosition() {
   const availablePositions = getAvailableStudentPositions();
+
+  if (availablePositions.length === 0) {
+    return null;
+  }
+
   const averageCalledOn =
     availablePositions.reduce(
       (total, studentIndex) =>
@@ -776,14 +1065,25 @@ function chooseWeightedStudentPosition() {
 function chooseRandomStudent() {
   randomizedStudentIndex = chooseWeightedStudentPosition();
 
+  if (randomizedStudentIndex === null) {
+    return;
+  }
+
   const studentRow = Math.floor(randomizedStudentIndex / COLUMNS);
   const studentColumn = randomizedStudentIndex % COLUMNS;
   const selectedStudent =
     periods[currentPeriodIndex][studentRow][studentColumn];
 
+  captureUndoState();
   selectedStudent.calledOn += 1;
+  callHistory[currentPeriodIndex].push({
+    studentName: selectedStudent.name,
+    calledAt: new Date().toISOString(),
+    calledOnCount: selectedStudent.calledOn,
+  });
   speechHandler.speech(selectedStudent.name);
   savePeriods();
+  saveCallHistory();
   selectedStudentIndex = null;
   renderPeriod();
 }
@@ -800,6 +1100,7 @@ function changePeriod(direction) {
 previousButton.addEventListener("click", () => changePeriod(-1));
 nextButton.addEventListener("click", () => changePeriod(1));
 randomizedButton.addEventListener("click", chooseRandomStudent);
+undoStudentChangeButton.addEventListener("click", undoLastStudentChange);
 showStudentPicturesCheckbox.addEventListener("change", () => {
   showStudentPictures = showStudentPicturesCheckbox.checked;
   selectedStudentIndex = null;
@@ -821,6 +1122,7 @@ showCalledOnCountCheckbox.addEventListener("change", () => {
   renderPeriod();
 });
 exportLocalStorageButton.addEventListener("click", exportLocalStorage);
+downloadStudentReportButton.addEventListener("click", downloadStudentReport);
 importLocalStorageButton.addEventListener("click", () => {
   importLocalStorageFile.click();
 });

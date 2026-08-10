@@ -19,9 +19,16 @@
         &rarr;
       </button>
     </div>
-    <button id="randomized-student" class="randomized-button" type="button">
-      random
-    </button>
+    <div class="random-controls">
+      <button id="undo-student-change" class="undo-button" type="button" aria-label="Undo last student change" title="Undo last student change" disabled>
+        <svg height="21" viewBox="0 0 409 409" aria-hidden="true">
+          <path fill="currentColor" d="M212.018,7.461c-60.921,0-118.198,28.518-155.245,75.784L0.122,50.491L0,237.986l162.426-93.645l-52.213-30.21c25.648-28.724,62.548-46.02,101.805-46.02c75.233,0,136.475,61.213,136.475,136.465c0,75.25-61.241,136.468-136.475,136.468v60.645c108.701,0,197.133-88.423,197.133-197.112C409.151,95.891,320.719,7.461,212.018,7.461z" />
+        </svg>
+      </button>
+      <button id="randomized-student" class="randomized-button" type="button">
+        random
+      </button>
+    </div>
     <details class="settings-menu">
       <summary>Settings</summary>
       <label class="settings-option">
@@ -42,12 +49,13 @@
       <button id="import-local-storage" class="settings-export-button" type="button">
         import JSON
       </button>
-      <input
-        id="import-local-storage-file"
-        type="file"
-        accept=".json,application/json"
-        hidden
-      />
+      <input id="import-local-storage-file" type="file" accept=".json,application/json" hidden />
+      <div class="settings-section">
+        <div class="settings-section-title">Reports</div>
+        <button id="download-student-report" class="settings-export-button" type="button">
+          download text report
+        </button>
+      </div>
     </details>
   </nav>
 
