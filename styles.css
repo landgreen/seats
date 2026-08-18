@@ -223,11 +223,12 @@ body {
 
 .student-grid {
   display: grid;
-  grid-template-columns: repeat(10, minmax(100px, 1fr));
+  grid-template-columns:
+    repeat(2, minmax(100px, 1fr)) 5px repeat(4, minmax(100px, 1fr)) 5px repeat(4, minmax(100px, 1fr));
   grid-template-rows: repeat(4, auto);
   gap: 0;
   width: min(1320px, 100%);
-  min-width: 1090px;
+  min-width: 1110px;
 }
 
 .student-grid.pictures-hidden {

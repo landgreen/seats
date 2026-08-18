@@ -1,11 +1,23 @@
 const ROWS = 4;
 const COLUMNS = 10;
+const GRID_SPACER_AFTER_COLUMNS = [2, 6];
 const PREVIOUS_COLUMN_COUNT = 9;
 const INSERTED_COLUMN_INDEX = 2;
 const PERIOD_COUNT = 6;
 const STORAGE_KEY = "attendance-periods";
 const CURRENT_PERIOD_STORAGE_KEY = "attendance-current-period";
-const PERIOD_ONE_PHOTOS_SEEDED_KEY = "attendance-period-one-photos-seeded";
+const PERIOD_ONE_ROSTER_SEEDED_KEY =
+  "attendance-period-one-front-layout-v2-seeded";
+const PERIOD_TWO_ROSTER_SEEDED_KEY =
+  "attendance-period-two-front-layout-seeded";
+const PERIOD_TWO_FADAVI_ADDED_KEY =
+  "attendance-period-two-parmin-fadavi-added";
+const PERIOD_THREE_ROSTER_SEEDED_KEY =
+  "attendance-period-three-front-layout-seeded";
+const PERIOD_FOUR_ROSTER_SEEDED_KEY =
+  "attendance-period-four-front-layout-v2-seeded";
+const PERIOD_FIVE_ROSTER_SEEDED_KEY =
+  "attendance-period-five-front-layout-v1-seeded";
 const SHOW_STUDENT_PICTURES_KEY = "attendance-show-student-pictures";
 const VOICE_ENABLED_KEY = "attendance-voice-enabled";
 const SHOW_CALLED_ON_COUNT_KEY = "attendance-show-called-on-count";
@@ -20,28 +32,151 @@ const BLOCKED_POSITIONS = new Set();
 
 const MERGED_BLOCKS = new Map();
 const MERGED_BLOCK_CHILDREN = new Set();
-const PERIOD_ONE_PHOTOS = [
+const PERIOD_ONE_PHOTO_DIRECTORY =
+  "student files/1) COSC A-1 Computer Science A _ Roster _ Infinite Campus_files";
+const PERIOD_ONE_STUDENTS = [
+  { lastName: "Bendezu", firstName: "Benjamin", photoId: "7292" },
+  { lastName: "Benoliel-Bloomfield", firstName: "Orson A", photoId: "7043" },
+  { lastName: "Camacho", firstName: "Cesar", photoId: "5706" },
+  { lastName: "Gonzalez", firstName: "Leo", photoId: "5738" },
+  { lastName: "Gonzalez", firstName: "Sebastian", photoId: "5736" },
+  { lastName: "Lui-Carter", firstName: "Kekoa (Koa)", photoId: "8332" },
+  { lastName: "Mann", firstName: "Jaydon", photoId: "5766" },
+  { lastName: "Silver", firstName: "Amanda", photoId: "10160" },
+  { lastName: "Yiu", firstName: "Skylar", photoId: "5848" },
+  { lastName: "Garcia", firstName: "Bernardo", photoId: "7614" },
+]
+  .sort(compareStudentsByLastName);
+const PERIOD_TWO_PHOTO_DIRECTORY =
+  "student files/2) HPHYS A-2 Honors Physics A _ Roster _ Infinite Campus_files";
+const PERIOD_TWO_STUDENTS = [
+  { lastName: "Aggen", firstName: "Alexander", photoId: "6430" },
+  { lastName: "Austin", firstName: "Eloise", photoId: "6885" },
+  { lastName: "Avidon", firstName: "Susanna", photoId: "6504" },
+  { lastName: "Babb", firstName: "Nathaniel", photoId: "6515" },
+  { lastName: "Buchotte", firstName: "Celeste", photoId: "7471" },
+  { lastName: "Calderon", firstName: "Rachel", photoId: "7804" },
+  { lastName: "Deutchman", firstName: "Caleb", photoId: "6547" },
+  { lastName: "Donenfeld", firstName: "Juliet", photoId: "7362" },
   {
-    name: "Camilo Garcia",
-    image: "output/student-photos/camilo-garcia.jpg",
+    lastName: "Fadavi",
+    firstName: "Parmin",
+    image:
+      "student files/4) HPHYS A-4 Honors Physics A _ Roster _ Infinite Campus_files/8710.jpg",
   },
-  {
-    name: "Cinthia Garcia Aquino",
-    image: "output/student-photos/cinthia-garcia-aquino.jpg",
-  },
-  {
-    name: "Luca Jarjoura",
-    image: "output/student-photos/luca-jarjoura.jpg",
-  },
-  {
-    name: "Kirby Lai",
-    image: "output/student-photos/kirby-lai.jpg",
-  },
-  {
-    name: "James Theiss",
-    image: "output/student-photos/james-theiss.jpg",
-  },
-];
+  { lastName: "Glynn", firstName: "Clover", photoId: "6595" },
+  { lastName: "Golden", firstName: "Katelyn E", photoId: "8293" },
+  { lastName: "Hasegawa", firstName: "Dominick", photoId: "7373" },
+  { lastName: "Johnson", firstName: "Eloise", photoId: "6629" },
+  { lastName: "Kulkarni", firstName: "Akash S", photoId: "6995" },
+  { lastName: "Levy", firstName: "Taylor", photoId: "6650" },
+  { lastName: "Loncar", firstName: "Chase", photoId: "7382" },
+  { lastName: "Mateyko", firstName: "Claire (Oliver)", photoId: "7795" },
+  { lastName: "Matthew", firstName: "Olivia L", photoId: "7045" },
+  { lastName: "Nayak-Young", firstName: "Jaina", photoId: "8795" },
+  { lastName: "Parhami", firstName: "Julian", photoId: "6717" },
+  { lastName: "Park", firstName: "Kearney", photoId: "6713" },
+  { lastName: "Press", firstName: "Claire", photoId: "6728" },
+  { lastName: "Raith", firstName: "Charlotte F", photoId: "8301" },
+  { lastName: "Stein", firstName: "Avery L", photoId: "7095" },
+  { lastName: "Sung", firstName: "Jayden", photoId: "6622" },
+  { lastName: "Tran", firstName: "Mika", photoId: "6772" },
+  { lastName: "Vasquez", firstName: "Julian", photoId: "6779" },
+  { lastName: "Webster", firstName: "Emjay", photoId: "8768" },
+  { lastName: "Weiss", firstName: "Samson", photoId: "6788" },
+  { lastName: "Williams", firstName: "Leo", photoId: "6789" },
+  { lastName: "Wong", firstName: "Bodhi", photoId: "6794" },
+  { lastName: "Yaghtin Mirshekar", firstName: "Arfun", photoId: "8780" },
+  { lastName: "Yu", firstName: "Bella", photoId: "6800" },
+  { lastName: "Davidovic", firstName: "Iva", photoId: "6888" },
+  { lastName: "Fattal", firstName: "Aaron", photoId: "6569" },
+  { lastName: "Shepard", firstName: "Emerson", photoId: "6749" },
+]
+  .sort(compareStudentsByLastName);
+const PERIOD_THREE_PHOTO_DIRECTORY =
+  "student files/3) PHYS A-3 Physics A _ Roster _ Infinite Campus_files";
+const PERIOD_THREE_STUDENTS = [
+  { lastName: "Beck", firstName: "Benjamin (Benji)", photoId: "6517" },
+  { lastName: "Beck", firstName: "Maxwell (Maxi)", photoId: "6516" },
+  { lastName: "Beltran", firstName: "Carolina (Nick)", photoId: "8690" },
+  { lastName: "Betterton Gage", firstName: "Sissy", photoId: "8693" },
+  { lastName: "Cain", firstName: "Millie", photoId: "8697" },
+  { lastName: "Cordova", firstName: "Lisseth", photoId: "8705" },
+  { lastName: "Diem", firstName: "Albert", photoId: "8707" },
+  { lastName: "Eshel", firstName: "Guy", photoId: "6562" },
+  { lastName: "Goldsmith", firstName: "Maxwell", photoId: "8640" },
+  { lastName: "Gooch", firstName: "Siena", photoId: "6598" },
+  { lastName: "Hovsepyan", firstName: "Ava", photoId: "6615" },
+  { lastName: "Johnson", firstName: "Harlym", photoId: "7376" },
+  { lastName: "LeMond", firstName: "Kahlo H", photoId: "12711" },
+  { lastName: "Murphy", firstName: "Cassidy", photoId: "6696" },
+  { lastName: "Murphy", firstName: "Declan", photoId: "6938" },
+  { lastName: "Pelman", firstName: "Gabriel", photoId: "8744" },
+  { lastName: "Schulte-Wayser", firstName: "Joseph R", photoId: "8304" },
+  { lastName: "Sernas Herrera", firstName: "Caleb", photoId: "8756" },
+  { lastName: "Velazquez", firstName: "Ian", photoId: "9411" },
+]
+  .sort(compareStudentsByLastName);
+const PERIOD_FOUR_PHOTO_DIRECTORY =
+  "student files/4) HPHYS A-4 Honors Physics A _ Roster _ Infinite Campus_files";
+const PERIOD_FOUR_STUDENTS = [
+  { lastName: "Behrstock", firstName: "Julia", photoId: "6523" },
+  { lastName: "Cheng Caplan", firstName: "Henry", photoId: "6532" },
+  { lastName: "Cohen", firstName: "Saul", photoId: "6538" },
+  { lastName: "Fadavi", firstName: "Parmin", photoId: "8710" },
+  { lastName: "Faynberg", firstName: "Michelle", photoId: "6570" },
+  { lastName: "Fong", firstName: "Aaden", photoId: "6576" },
+  { lastName: "Fraser", firstName: "Lucy", photoId: "6577" },
+  { lastName: "Harawitz", firstName: "Nate", photoId: "6605" },
+  { lastName: "Jarjoura", firstName: "Luca", photoId: "10148" },
+  { lastName: "Jones", firstName: "George", photoId: "6632" },
+  { lastName: "Liszt", firstName: "Drew", photoId: "5759" },
+  { lastName: "Lucking", firstName: "Jenson", photoId: "6658" },
+  { lastName: "Mahalingam", firstName: "Jaya", photoId: "6282" },
+  { lastName: "Martinez", firstName: "Eric", photoId: "6672" },
+  { lastName: "Oliva", firstName: "Angelo", photoId: "6712" },
+  { lastName: "Robinette", firstName: "Simon", photoId: "6738" },
+  { lastName: "Ross", firstName: "Nola", photoId: "6740" },
+  { lastName: "Siripopungul", firstName: "Thanathad", photoId: "6753" },
+  { lastName: "Thompson", firstName: "Dylan", photoId: "8763" },
+  { lastName: "Walters", firstName: "Helena", photoId: "6783" },
+]
+  .sort(compareStudentsByLastName);
+const PERIOD_FIVE_PHOTO_DIRECTORY =
+  "student files/5) PHYS A-5 Physics A _ Roster _ Infinite Campus_files";
+const PERIOD_FIVE_STUDENTS = [
+  { lastName: "Arbing", firstName: "Zoe (GREY)", photoId: "6500" },
+  { lastName: "Brotherton", firstName: "Alexandra (Allie)", photoId: "6524" },
+  { lastName: "Burke", firstName: "Jacob B", photoId: "8289" },
+  { lastName: "Davidoff", firstName: "Edo", photoId: "7354" },
+  { lastName: "Derse", firstName: "Fionna Mae", photoId: "6546" },
+  { lastName: "Kimmel", firstName: "Gaëlle", photoId: "5754" },
+  { lastName: "Krieger", firstName: "Stella", photoId: "6646" },
+  { lastName: "Lewin", firstName: "Kahea", photoId: "8729" },
+  { lastName: "Luckyr", firstName: "Polina", photoId: "6661" },
+  { lastName: "Muddassir", firstName: "Ayden", photoId: "5787" },
+  { lastName: "Revis-Juson", firstName: "Rio", photoId: "6734" },
+  { lastName: "Shad", firstName: "Arie", photoId: "6742" },
+  { lastName: "Shadi", firstName: "Noah", photoId: "6743" },
+  { lastName: "Shahar", firstName: "Ethan (Sorel Shahar)", photoId: "8758" },
+  { lastName: "Tennent", firstName: "Cooper", photoId: "6762" },
+  { lastName: "Thompson", firstName: "Ryland", photoId: "8764" },
+  { lastName: "Ward", firstName: "Ella", photoId: "7419" },
+  { lastName: "Yasharpour-Cantor", firstName: "Gabriel", photoId: "8782" },
+  { lastName: "Yee", firstName: "Logan", photoId: "8785" },
+]
+  .sort(compareStudentsByLastName);
+
+function compareStudentsByLastName(firstStudent, secondStudent) {
+  return (
+    firstStudent.lastName.localeCompare(secondStudent.lastName, undefined, {
+      sensitivity: "base",
+    }) ||
+    firstStudent.firstName.localeCompare(secondStudent.firstName, undefined, {
+      sensitivity: "base",
+    })
+  );
+}
 
 const speechHandler = {
   voices: [],
@@ -90,6 +225,7 @@ function createStudent(name, image = null) {
     calledOn: 0,
     tardy: 0,
     eating: 0,
+    offTask: 0,
   };
 }
 
@@ -126,7 +262,8 @@ function isStudentRecord(value) {
     typeof value.name === "string" &&
     Number.isFinite(value.calledOn) &&
     Number.isFinite(value.tardy) &&
-    Number.isFinite(value.eating)
+    Number.isFinite(value.eating) &&
+    (value.offTask === undefined || Number.isFinite(value.offTask))
   );
 }
 
@@ -168,6 +305,7 @@ function normalizeStudentRecords(storedPeriods) {
           typeof student.isEmpty === "boolean" ? student.isEmpty : false,
         isLocked:
           typeof student.isLocked === "boolean" ? student.isLocked : false,
+        offTask: Number.isFinite(student.offTask) ? student.offTask : 0,
       })),
     ),
   );
@@ -442,6 +580,7 @@ function downloadStudentReport() {
         `  Called on: ${student.calledOn}`,
         `  Tardies: ${student.tardy}`,
         `  Eating: ${student.eating}`,
+        `  Off task: ${student.offTask}`,
         "",
       );
     });
@@ -590,43 +729,270 @@ function lockFormerNonSeatsOnce() {
 
 lockFormerNonSeatsOnce();
 
-function seedPeriodOnePhotos() {
+function seedPeriodOneRoster() {
   try {
-    if (localStorage.getItem(PERIOD_ONE_PHOTOS_SEEDED_KEY) === "true") {
+    if (localStorage.getItem(PERIOD_ONE_ROSTER_SEEDED_KEY) === "true") {
       return;
     }
 
-    const availablePositions = Array.from(
-      { length: ROWS * COLUMNS },
-      (_, studentIndex) => studentIndex,
-    ).filter((studentIndex) => {
-      const row = Math.floor(studentIndex / COLUMNS);
-      const column = studentIndex % COLUMNS;
-      return (
-        !periods[0][row][column].isEmpty &&
-        !periods[0][row][column].isLocked
-      );
-    });
-
-    PERIOD_ONE_PHOTOS.forEach((studentData, photoIndex) => {
-      const studentIndex = availablePositions[photoIndex];
-      const row = Math.floor(studentIndex / COLUMNS);
-      const column = studentIndex % COLUMNS;
-
-      periods[0][row][column] = createStudent(
-        studentData.name,
-        studentData.image,
-      );
-    });
+    const periodThreeLockedPositions = getLockedSeatPositions(periods[2]);
+    arrangeRoster(
+      periods[0],
+      PERIOD_ONE_STUDENTS,
+      PERIOD_ONE_PHOTO_DIRECTORY,
+      periodThreeLockedPositions,
+      false,
+    );
 
     savePeriods();
-    localStorage.setItem(PERIOD_ONE_PHOTOS_SEEDED_KEY, "true");
+    localStorage.setItem(PERIOD_ONE_ROSTER_SEEDED_KEY, "true");
   } catch (error) {
-    console.warn("The period 1 student photos could not be initialized.", error);
+    console.warn("The period 1 roster could not be initialized.", error);
   }
 }
 
-seedPeriodOnePhotos();
+seedPeriodOneRoster();
+
+function getFrontToBackSeatPositions() {
+  const positions = [];
+
+  for (let row = ROWS - 1; row >= 0; row -= 1) {
+    for (let column = 0; column < COLUMNS; column += 1) {
+      positions.push(row * COLUMNS + column);
+    }
+  }
+
+  return positions;
+}
+
+function getLockedSeatPositions(period) {
+  return new Set(
+    period
+      .flat()
+      .map((student, studentIndex) => ({ student, studentIndex }))
+      .filter(({ student }) => student.isLocked)
+      .map(({ studentIndex }) => studentIndex),
+  );
+}
+
+function arrangeRoster(
+  period,
+  students,
+  photoDirectory,
+  lockedPositions,
+  allowLockedOverflow,
+) {
+  const existingStudentsByName = new Map(
+    period
+      .flat()
+      .filter((student) => !student.isEmpty && !student.isLocked)
+      .map((student) => [student.name, student]),
+  );
+  const frontToBackPositions = getFrontToBackSeatPositions();
+  const preferredPositions = frontToBackPositions.filter(
+    (studentIndex) => !lockedPositions.has(studentIndex),
+  );
+  const overflowCount = Math.max(0, students.length - preferredPositions.length);
+  const lockedPositionsFrontToBack = frontToBackPositions.filter(
+    (studentIndex) => lockedPositions.has(studentIndex),
+  );
+  const overflowPositions = allowLockedOverflow && overflowCount > 0
+    ? lockedPositionsFrontToBack.slice(-overflowCount)
+    : [];
+  const usablePositions = new Set([
+    ...preferredPositions,
+    ...overflowPositions,
+  ]);
+  const studentPositions = frontToBackPositions.filter((studentIndex) =>
+    usablePositions.has(studentIndex),
+  );
+
+  if (students.length > studentPositions.length) {
+    throw new Error("There are not enough seats for this roster.");
+  }
+
+  frontToBackPositions.forEach((studentIndex) => {
+    const row = Math.floor(studentIndex / COLUMNS);
+    const column = studentIndex % COLUMNS;
+    const emptySeat = createStudent("");
+
+    if (lockedPositions.has(studentIndex)) {
+      emptySeat.isLocked = true;
+    } else {
+      emptySeat.isEmpty = true;
+    }
+
+    period[row][column] = emptySeat;
+  });
+
+  students.forEach((studentData, rosterIndex) => {
+    const studentIndex = studentPositions[rosterIndex];
+    const row = Math.floor(studentIndex / COLUMNS);
+    const column = studentIndex % COLUMNS;
+    const studentName = `${studentData.firstName} ${studentData.lastName}`;
+    const studentImage =
+      studentData.image ?? `${photoDirectory}/${studentData.photoId}.jpg`;
+    const existingStudent = existingStudentsByName.get(studentName);
+
+    period[row][column] = existingStudent
+      ? {
+          ...existingStudent,
+          name: studentName,
+          image: studentImage,
+          isEmpty: false,
+          isLocked: false,
+        }
+      : createStudent(studentName, studentImage);
+  });
+}
+
+function seedPeriodTwoRoster() {
+  try {
+    if (localStorage.getItem(PERIOD_TWO_ROSTER_SEEDED_KEY) === "true") {
+      return;
+    }
+
+    const periodThreeLockedPositions = getLockedSeatPositions(periods[2]);
+    arrangeRoster(
+      periods[1],
+      PERIOD_TWO_STUDENTS,
+      PERIOD_TWO_PHOTO_DIRECTORY,
+      periodThreeLockedPositions,
+      true,
+    );
+
+    savePeriods();
+    localStorage.setItem(PERIOD_TWO_ROSTER_SEEDED_KEY, "true");
+  } catch (error) {
+    console.warn("The period 2 roster could not be initialized.", error);
+  }
+}
+
+seedPeriodTwoRoster();
+
+function addParminFadaviToPeriodTwoOnce() {
+  try {
+    if (localStorage.getItem(PERIOD_TWO_FADAVI_ADDED_KEY) === "true") {
+      return;
+    }
+
+    const periodTwo = periods[1];
+    const studentName = "Parmin Fadavi";
+    const studentImage =
+      "student files/4) HPHYS A-4 Honors Physics A _ Roster _ Infinite Campus_files/8710.jpg";
+    const existingStudent = periodTwo
+      .flat()
+      .find((student) => student.name === studentName);
+
+    if (existingStudent) {
+      existingStudent.image = studentImage;
+      existingStudent.isEmpty = false;
+      existingStudent.isLocked = false;
+    } else {
+      const frontToBackPositions = getFrontToBackSeatPositions();
+      const emptyPosition = frontToBackPositions.find((studentIndex) => {
+        const row = Math.floor(studentIndex / COLUMNS);
+        const column = studentIndex % COLUMNS;
+        const student = periodTwo[row][column];
+        return student.isEmpty && !student.isLocked;
+      });
+      const availablePosition =
+        emptyPosition ??
+        [...frontToBackPositions].reverse().find((studentIndex) => {
+          const row = Math.floor(studentIndex / COLUMNS);
+          const column = studentIndex % COLUMNS;
+          return periodTwo[row][column].isLocked;
+        });
+
+      if (availablePosition === undefined) {
+        throw new Error("There is no empty seat in period 2.");
+      }
+
+      const row = Math.floor(availablePosition / COLUMNS);
+      const column = availablePosition % COLUMNS;
+      periodTwo[row][column] = createStudent(studentName, studentImage);
+    }
+
+    savePeriods();
+    localStorage.setItem(PERIOD_TWO_FADAVI_ADDED_KEY, "true");
+  } catch (error) {
+    console.warn("Parmin Fadavi could not be added to period 2.", error);
+  }
+}
+
+addParminFadaviToPeriodTwoOnce();
+
+function seedPeriodThreeRoster() {
+  try {
+    if (localStorage.getItem(PERIOD_THREE_ROSTER_SEEDED_KEY) === "true") {
+      return;
+    }
+
+    const periodThreeLockedPositions = getLockedSeatPositions(periods[2]);
+    arrangeRoster(
+      periods[2],
+      PERIOD_THREE_STUDENTS,
+      PERIOD_THREE_PHOTO_DIRECTORY,
+      periodThreeLockedPositions,
+      false,
+    );
+
+    savePeriods();
+    localStorage.setItem(PERIOD_THREE_ROSTER_SEEDED_KEY, "true");
+  } catch (error) {
+    console.warn("The period 3 roster could not be initialized.", error);
+  }
+}
+
+seedPeriodThreeRoster();
+
+function seedPeriodFourRoster() {
+  try {
+    if (localStorage.getItem(PERIOD_FOUR_ROSTER_SEEDED_KEY) === "true") {
+      return;
+    }
+
+    const periodThreeLockedPositions = getLockedSeatPositions(periods[2]);
+    arrangeRoster(
+      periods[3],
+      PERIOD_FOUR_STUDENTS,
+      PERIOD_FOUR_PHOTO_DIRECTORY,
+      periodThreeLockedPositions,
+      false,
+    );
+
+    savePeriods();
+    localStorage.setItem(PERIOD_FOUR_ROSTER_SEEDED_KEY, "true");
+  } catch (error) {
+    console.warn("The period 4 roster could not be initialized.", error);
+  }
+}
+
+seedPeriodFourRoster();
+
+function seedPeriodFiveRoster() {
+  try {
+    if (localStorage.getItem(PERIOD_FIVE_ROSTER_SEEDED_KEY) === "true") {
+      return;
+    }
+
+    const periodThreeLockedPositions = getLockedSeatPositions(periods[2]);
+    arrangeRoster(
+      periods[4],
+      PERIOD_FIVE_STUDENTS,
+      PERIOD_FIVE_PHOTO_DIRECTORY,
+      periodThreeLockedPositions,
+      false,
+    );
+
+    savePeriods();
+    localStorage.setItem(PERIOD_FIVE_ROSTER_SEEDED_KEY, "true");
+  } catch (error) {
+    console.warn("The period 5 roster could not be initialized.", error);
+  }
+}
+
+seedPeriodFiveRoster();
 
 const studentGrid = document.querySelector("#student-grid");
 const periodLabel = document.querySelector("#period-label");
@@ -705,7 +1071,10 @@ function getStudentDisplayName(studentData) {
 }
 
 function renderPeriod() {
-  periodLabel.textContent = `Period ${currentPeriodIndex + 1}`;
+  const activeStudentCount = periods[currentPeriodIndex]
+    .flat()
+    .filter((student) => !student.isEmpty && !student.isLocked).length;
+  periodLabel.textContent = `P${currentPeriodIndex + 1} (${activeStudentCount})`;
   showStudentPicturesCheckbox.checked = showStudentPictures;
   voiceEnabledCheckbox.checked = voiceEnabled;
   showCalledOnCountCheckbox.checked = showCalledOnCount;
@@ -726,7 +1095,11 @@ function renderPeriod() {
     student.dataset.index = studentIndex;
     student.style.gridRow = `${rowIndex + 1}${mergedBlock ? ` / span ${mergedBlock.rowSpan}` : ""
       }`;
-    student.style.gridColumn = `${columnIndex + 1}${mergedBlock ? ` / span ${mergedBlock.columnSpan}` : ""
+    const spacerCount = GRID_SPACER_AFTER_COLUMNS.filter(
+      (column) => columnIndex >= column,
+    ).length;
+    const gridColumn = columnIndex + 1 + spacerCount;
+    student.style.gridColumn = `${gridColumn}${mergedBlock ? ` / span ${mergedBlock.columnSpan}` : ""
       }`;
 
     if (BLOCKED_POSITIONS.has(studentIndex)) {
@@ -773,6 +1146,7 @@ function renderPeriod() {
           ["Called On", "calledOn"],
           ["Tardy", "tardy"],
           ["Eating", "eating"],
+          ["Off Task", "offTask"],
         ].forEach(([labelText, propertyName]) => {
           const fieldLabel = document.createElement("label");
           fieldLabel.className = "student-option-field";
